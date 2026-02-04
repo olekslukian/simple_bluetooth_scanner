@@ -19,7 +19,12 @@ abstract class BluetoothScannerPlatform extends PlatformInterface {
 
   Future<String?> getPlatformVersion();
 
-  Future<void> initBluetoothAdapter();
+  Future<bool> hasBluetoothPermissions();
+  Future<bool> requestBluetoothPermissions();
+
+  Future<bool> isBluetoothSupported();
+  Future<bool> isBluetoothEnabled();
+  Future<bool> enableBluetooth();
 
   Future<List<BluetoothDevice>?> getPairedDevices();
 }

@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.github/
 
 # IntelliJ related
 *.iml
@@ -31,3 +32,4 @@ migrate_working_dir/
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
+specs/

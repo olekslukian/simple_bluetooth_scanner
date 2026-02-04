@@ -8,10 +8,6 @@ class BluetoothScanner {
     return BluetoothScannerPlatform.instance.getPlatformVersion();
   }
 
-  Future<void> initBluetoothAdapter() {
-    return BluetoothScannerPlatform.instance.initBluetoothAdapter();
-  }
-
   Future<List<BluetoothDevice>?> getPairedDevices() {
     return BluetoothScannerPlatform.instance.getPairedDevices();
   }

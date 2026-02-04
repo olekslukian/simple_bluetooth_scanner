@@ -26,12 +26,13 @@ class BluetoothScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   companion object {
     private const val REQUEST_ENABLE_BT = 1
+    private const val METHOD_CHANNEL_NAME = "bluetooth_scanner"
   }
 
   private var bluetoothAdapter: BluetoothAdapter? = null
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    methodChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "bluetooth_scanner")
+    methodChannel = MethodChannel(flutterPluginBinding.binaryMessenger, METHOD_CHANNEL_NAME)
     methodChannel.setMethodCallHandler(this)
 
     context = flutterPluginBinding.applicationContext
@@ -58,6 +59,7 @@ class BluetoothScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     binding.addActivityResultListener { requestCode, resultCode, intent ->
       onActivityResult(requestCode, resultCode, intent)
     }
+
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
@@ -74,7 +76,8 @@ class BluetoothScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     when (call.method) {
-      "init_bluetooth_adapter" -> initBluetoothAdapter(context, activity, result)
+      "is_bluetooth_supported" -> isBluetoothSupported(context, result)
+      "initialize" -> initialize(context, activity, result)
       "get_paired_devices" -> getPairedDevices(result)
       "get_platform_version" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       else -> result.notImplemented()
@@ -85,7 +88,26 @@ class BluetoothScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     methodChannel.setMethodCallHandler(null)
   }
 
-  fun initBluetoothAdapter(appContext: Context, activity: Activity, result: Result) {
+  fun isBluetoothSupported(appContext: Context, result: Result) {
+    val bluetoothManager: BluetoothManager? =
+      getSystemService(appContext, BluetoothManager::class.java)
+    bluetoothAdapter = bluetoothManager?.adapter
+
+    if (bluetoothAdapter == null) {
+      result.error("not_supported", "Device doesn't support Bluetooth", null)
+    }
+
+    result.success("Device supports Bluetooth")
+  }
+
+  fun checkBluetoothPermission(appContext: Context, result: Result) {
+    
+
+  }
+
+
+
+  fun initialize(appContext: Context, activity: Activity, result: Result) {
     val bluetoothManager: BluetoothManager? =
       getSystemService(appContext, BluetoothManager::class.java)
     bluetoothAdapter = bluetoothManager?.adapter
