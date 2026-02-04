@@ -1,15 +1,46 @@
 # bluetooth_scanner
 
-A new Flutter plugin project.
+A Flutter plugin for Bluetooth device scanning and management.
 
-## Getting Started
+**Status:** In development
 
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/to/develop-plugins),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
+## Overview
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This plugin provides a simple API for working with Bluetooth on Android and iOS devices. It allows you to check Bluetooth availability, manage permissions, enable Bluetooth, and access paired devices.
+
+### Features
+
+- Check if Bluetooth is supported on the device
+- Request and manage Bluetooth permissions
+- Enable/disable Bluetooth adapter
+- Get list of paired devices
+- No initialization required - just create an instance and start using methods
+
+### Platform Support
+
+- Android: API 21+ (partial implementation)
+- iOS: Planned (stub only)
+
+## Installation
+
+Add this to your package's `pubspec.yaml` file:
+
+```yaml
+dependencies:
+  bluetooth_scanner: ^0.0.1
+```
+
+## Usage
+
+```dart
+import 'package:bluetooth_scanner/bluetooth_scanner.dart';
+
+final scanner = BluetoothScanner();
+
+// Check if Bluetooth is supported
+final supported = await scanner.isBluetoothSupported();
+
+// Get paired devices
+final devices = await scanner.getPairedDevices();
+```
 
