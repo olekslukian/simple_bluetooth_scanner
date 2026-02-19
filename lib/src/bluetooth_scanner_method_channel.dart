@@ -17,38 +17,54 @@ class MethodChannelBluetoothScanner extends BluetoothScannerPlatform {
   }
 
   @override
-  Future<bool> enableBluetooth() {
-    // TODO: implement enableBluetooth
-    throw UnimplementedError();
+  Future<bool> isBluetoothSupported() async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'is_bluetooth_supported',
+    );
+    return result ?? false;
   }
 
   @override
-  Future<bool> hasBluetoothPermissions() {
-    // TODO: implement hasBluetoothPermissions
-    throw UnimplementedError();
+  Future<bool> hasBluetoothPermissions() async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'has_bluetooth_permissions',
+    );
+    return result ?? false;
   }
 
   @override
-  Future<bool> isBluetoothEnabled() {
-    // TODO: implement isBluetoothEnabled
-    throw UnimplementedError();
+  Future<bool> requestBluetoothPermissions() async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'request_bluetooth_permissions',
+    );
+    return result ?? false;
   }
 
   @override
-  Future<bool> isBluetoothSupported() {
-    // TODO: implement isBluetoothSupported
-    throw UnimplementedError();
+  Future<bool> isBluetoothEnabled() async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'is_bluetooth_enabled',
+    );
+    return result ?? false;
   }
 
   @override
-  Future<bool> requestBluetoothPermissions() {
-    // TODO: implement requestBluetoothPermissions
-    throw UnimplementedError();
+  Future<bool> enableBluetooth() async {
+    final result = await methodChannel.invokeMethod<bool>('enable_bluetooth');
+    return result ?? false;
   }
 
   @override
-  Future<List<BluetoothDevice>?> getPairedDevices() {
-    // TODO: implement getPairedDevices
-    throw UnimplementedError();
+  Future<List<BluetoothDevice>?> getPairedDevices() async {
+    final result = await methodChannel.invokeMethod<List<Object?>>(
+      'get_paired_devices',
+    );
+
+    if (result == null) return null;
+
+    return result.map((item) {
+      final map = Map<String, dynamic>.from(item as Map);
+      return BluetoothDevice.fromMap(map);
+    }).toList();
   }
 }

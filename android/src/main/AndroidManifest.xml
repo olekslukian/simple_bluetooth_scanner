@@ -1,6 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="xyz.olekslukian.bluetooth_scanner">
 
+    <!-- Android 12+ (API 31+) Bluetooth permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Legacy permissions for Android < 12 (API < 31) -->
+    <!-- maxSdkVersion ensures these only apply on older devices -->
+    <uses-permission 
+        android:name="android.permission.BLUETOOTH" 
+        android:maxSdkVersion="30" />
+    <uses-permission 
+        android:name="android.permission.BLUETOOTH_ADMIN" 
+        android:maxSdkVersion="30" />
+    
+    <!-- Location required for Bluetooth scanning on older Android -->
+    <!-- Bluetooth beacons can reveal user location, so Android requires this -->
+    <uses-permission 
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
 </manifest>
