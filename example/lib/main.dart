@@ -14,9 +14,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List<BluetoothDevice> _devices = [];
+  List<BluetoothDevice> _pairedDevices = [];
+  final List<BluetoothDevice> _discoveredDevices = [];
   String _status = 'Initializing...';
   bool _isLoading = true;
+  bool _isDiscovering = false;
 
   final _bluetoothScanner = BluetoothScanner();
 
@@ -76,7 +78,7 @@ class _MyAppState extends State<MyApp> {
       if (!mounted) return;
 
       setState(() {
-        _devices = devices;
+        _pairedDevices = devices;
         _status = 'Found ${devices.length} paired device(s)';
         _isLoading = false;
       });
@@ -85,6 +87,25 @@ class _MyAppState extends State<MyApp> {
     } catch (e) {
       _updateStatus('Unexpected error: $e');
     }
+  }
+
+  Future<void> _startDiscovery() async {
+    setState(() {
+      _isDiscovering = true;
+      _discoveredDevices.clear();
+    });
+
+    _bluetoothScanner.startDiscovery().listen((event) {
+      if (event is DeviceFound) {
+        setState(
+          () => _discoveredDevices
+            ..add(event.device)
+            ..toSet().toList(),
+        );
+      } else if (event is ScanFinished) {
+        setState(() => _isDiscovering = false);
+      }
+    });
   }
 
   void _updateStatus(String status) {
@@ -108,45 +129,77 @@ class _MyAppState extends State<MyApp> {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            // Status bar
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.grey[200],
-              width: double.infinity,
-              child: Row(
-                children: [
-                  if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            children: [
+              // Status bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.grey[200],
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
-                  Expanded(child: Text(_status)),
-                ],
+                    Expanded(child: Text(_status)),
+                  ],
+                ),
               ),
-            ),
-            // Device list
-            Expanded(
-              child: _devices.isEmpty
-                  ? const Center(child: Text('No paired devices found'))
-                  : ListView.builder(
-                      itemCount: _devices.length,
-                      itemBuilder: (_, index) {
-                        final device = _devices[index];
-                        return ListTile(
-                          leading: const Icon(Icons.bluetooth),
-                          title: Text(device.name ?? 'Unknown Device'),
-                          subtitle: Text(device.address ?? 'No MAC address'),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              // Device list
+              Expanded(
+                child: _pairedDevices.isEmpty
+                    ? const Center(child: Text('No paired devices found'))
+                    : ListView.builder(
+                        itemCount: _pairedDevices.length,
+                        itemBuilder: (_, index) {
+                          final device = _pairedDevices[index];
+                          return ListTile(
+                            leading: const Icon(Icons.bluetooth),
+                            title: Text(device.name ?? 'Unknown Device'),
+                            subtitle: Text(device.address ?? 'No MAC address'),
+                          );
+                        },
+                      ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _discoveredDevices.length,
+                  itemBuilder: (context, index) {
+                    final device = _discoveredDevices[index];
+
+                    return ListTile(
+                      leading: const Icon(Icons.bluetooth_searching),
+                      title: Text(device.name ?? 'Unknown Device'),
+                      subtitle: Text(device.address ?? 'No MAC address'),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_isDiscovering) {
+                    await _bluetoothScanner.stopDiscovery();
+                    setState(() => _isDiscovering = false);
+                  } else {
+                    setState(() => _isDiscovering = true);
+                    _startDiscovery();
+                  }
+                },
+                child: Text(
+                  _isDiscovering ? 'Stop Discovery' : 'Start Discovery',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

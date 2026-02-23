@@ -1,5 +1,6 @@
 import 'package:bluetooth_scanner/src/bluetooth_scanner_platform_interface.dart';
 import 'package:bluetooth_scanner/src/models/bluetooth_device.dart';
+import 'package:bluetooth_scanner/src/scan_event.dart';
 
 class BluetoothScanner {
   /// Creates a BluetoothScanner instance.
@@ -78,5 +79,17 @@ class BluetoothScanner {
   /// or `null` if unable to retrieve.
   Future<List<BluetoothDevice>?> getPairedDevices() {
     return BluetoothScannerPlatform.instance.getPairedDevices();
+  }
+
+  Stream<ScanEvent> startDiscovery() {
+    return BluetoothScannerPlatform.instance.startDiscovery();
+  }
+
+  Future<bool> stopDiscovery() {
+    return BluetoothScannerPlatform.instance.stopDiscovery();
+  }
+
+  Future<bool> isDiscovering() {
+    return BluetoothScannerPlatform.instance.isDiscovering();
   }
 }

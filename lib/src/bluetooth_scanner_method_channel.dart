@@ -1,4 +1,5 @@
 import 'package:bluetooth_scanner/src/models/bluetooth_device.dart';
+import 'package:bluetooth_scanner/src/scan_event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +8,9 @@ import 'bluetooth_scanner_platform_interface.dart';
 class MethodChannelBluetoothScanner extends BluetoothScannerPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('bluetooth_scanner');
+
+  @visibleForTesting
+  final eventChannel = const EventChannel('bluetooth_scanner_events');
 
   @override
   Future<String?> getPlatformVersion() async {
@@ -66,5 +70,35 @@ class MethodChannelBluetoothScanner extends BluetoothScannerPlatform {
       final map = Map<String, dynamic>.from(item as Map);
       return BluetoothDevice.fromMap(map);
     }).toList();
+  }
+
+  @override
+  Stream<ScanEvent> startDiscovery() {
+    methodChannel.invokeMethod<bool>('start_discovery');
+    return eventChannel.receiveBroadcastStream().map((event) {
+      final map = Map<String, dynamic>.from(event as Map);
+      return switch (map['type'] as String) {
+        'scan_started' => ScanStarted(),
+        'device_found' => DeviceFound(
+          BluetoothDevice.fromMap(
+            Map<String, dynamic>.from(map['device'] as Map),
+          ),
+        ),
+        'scan_finished' => ScanFinished(),
+        _ => throw StateError('Unknown scan event type: ${map['type']}'),
+      };
+    });
+  }
+
+  @override
+  Future<bool> stopDiscovery() async {
+    final result = await methodChannel.invokeMethod<bool>('stop_discovery');
+    return result ?? false;
+  }
+
+  @override
+  Future<bool> isDiscovering() async {
+    final result = await methodChannel.invokeMethod<bool>('is_discovering');
+    return result ?? false;
   }
 }
