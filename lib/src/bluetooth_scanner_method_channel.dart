@@ -13,14 +13,6 @@ class MethodChannelBluetoothScanner extends BluetoothScannerPlatform {
   final eventChannel = const EventChannel('bluetooth_scanner_events');
 
   @override
-  Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'get_platform_version',
-    );
-    return version;
-  }
-
-  @override
   Future<bool> isBluetoothSupported() async {
     final result = await methodChannel.invokeMethod<bool>(
       'is_bluetooth_supported',

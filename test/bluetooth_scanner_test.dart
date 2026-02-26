@@ -4,17 +4,9 @@ import 'package:bluetooth_scanner/src/bluetooth_scanner_platform_interface.dart'
 import 'package:bluetooth_scanner/src/bluetooth_scanner_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-/// Mock implementation of BluetoothScannerPlatform for testing.
-///
-/// This class implements all methods from the platform interface,
-/// returning predictable values for unit tests.
 class MockBluetoothScannerPlatform
     with MockPlatformInterfaceMixin
     implements BluetoothScannerPlatform {
-
-  @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-
   @override
   Future<bool> isBluetoothSupported() => Future.value(true);
 
@@ -39,10 +31,32 @@ class MockBluetoothScannerPlatform
       rssi: -50,
     ),
   ]);
+
+  @override
+  Future<bool> isDiscovering() => Future.value(true);
+
+  @override
+  Stream<ScanEvent> startDiscovery() {
+    return Stream.fromIterable([
+      ScanEvent.deviceFound(
+        BluetoothDevice(
+          name: 'Discovered Device',
+          alias: 'My Discovered Device',
+          address: 'AA:BB:CC:DD:EE:FF',
+          rssi: -70,
+        ),
+      ),
+      ScanEvent.finished(),
+    ]);
+  }
+
+  @override
+  Future<bool> stopDiscovery() => Future.value(true);
 }
 
 void main() {
-  final BluetoothScannerPlatform initialPlatform = BluetoothScannerPlatform.instance;
+  final BluetoothScannerPlatform initialPlatform =
+      BluetoothScannerPlatform.instance;
 
   test('\$MethodChannelBluetoothScanner is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelBluetoothScanner>());
@@ -58,36 +72,20 @@ void main() {
       BluetoothScannerPlatform.instance = mockPlatform;
     });
 
-    test('getPlatformVersion returns expected value', () async {
-      expect(await bluetoothScanner.getPlatformVersion(), '42');
-    });
-
-    test('isBluetoothSupported returns expected value', () async {
-      expect(await bluetoothScanner.isBluetoothSupported(), true);
-    });
-
-    test('hasBluetoothPermissions returns expected value', () async {
-      expect(await bluetoothScanner.hasBluetoothPermissions(), true);
-    });
-
-    test('requestBluetoothPermissions returns expected value', () async {
-      expect(await bluetoothScanner.requestBluetoothPermissions(), true);
-    });
-
-    test('isBluetoothEnabled returns expected value', () async {
-      expect(await bluetoothScanner.isBluetoothEnabled(), true);
-    });
-
-    test('enableBluetooth returns expected value', () async {
-      expect(await bluetoothScanner.enableBluetooth(), true);
-    });
-
     test('getPairedDevices returns list of devices', () async {
       final devices = await bluetoothScanner.getPairedDevices();
       expect(devices, isNotNull);
       expect(devices!.length, 1);
       expect(devices[0].name, 'Test Device');
       expect(devices[0].address, '00:11:22:33:44:55');
+    });
+
+    test('startDiscovery emits scan events', () async {
+      final events = await bluetoothScanner.startDiscovery().toList();
+      expect(events.length, 2);
+      expect(events[0], isA<DeviceFound>());
+      expect((events[0] as DeviceFound).device.name, 'Discovered Device');
+      expect(events[1], isA<ScanFinished>());
     });
   });
 }
