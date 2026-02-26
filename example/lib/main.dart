@@ -14,141 +14,225 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List<BluetoothDevice> _devices = [];
-  String _status = 'Initializing...';
-  bool _isLoading = true;
+  List<BluetoothDevice> _pairedDevices = [];
+  final List<BluetoothDevice> _discoveredDevices = [];
+  bool _isLoadingPaired = true;
+  ScanEvent _lastScanEvent = ScanNotStarted();
 
   final _bluetoothScanner = BluetoothScanner();
 
   @override
   void initState() {
     super.initState();
-    _initBluetooth();
+    _loadPairedDevices();
   }
 
-  /// Demonstrates the proper flow for using Bluetooth:
-  /// 1. Check if Bluetooth is supported
-  /// 2. Check/request permissions
-  /// 3. Check if Bluetooth is enabled, enable if needed
-  /// 4. Use Bluetooth features (get paired devices)
-  Future<void> _initBluetooth() async {
-    setState(() {
-      _isLoading = true;
-      _status = 'Checking Bluetooth support...';
-    });
-
+  Future<void> _loadPairedDevices() async {
+    setState(() => _isLoadingPaired = true);
     try {
-      // Step 1: Check if device has Bluetooth hardware
       final isSupported = await _bluetoothScanner.isBluetoothSupported();
-      if (!isSupported) {
-        _updateStatus('Bluetooth not supported on this device');
-        return;
-      }
+      if (!isSupported || !mounted) return;
 
-      // Step 2: Check and request permissions
-      _updateStatus('Checking permissions...');
       var hasPermissions = await _bluetoothScanner.hasBluetoothPermissions();
       if (!hasPermissions) {
-        _updateStatus('Requesting permissions...');
         hasPermissions = await _bluetoothScanner.requestBluetoothPermissions();
-        if (!hasPermissions) {
-          _updateStatus('Bluetooth permissions denied');
-          return;
-        }
+        if (!hasPermissions || !mounted) return;
       }
 
-      // Step 3: Check if Bluetooth is enabled
-      _updateStatus('Checking if Bluetooth is enabled...');
       var isEnabled = await _bluetoothScanner.isBluetoothEnabled();
       if (!isEnabled) {
-        _updateStatus('Enabling Bluetooth...');
         isEnabled = await _bluetoothScanner.enableBluetooth();
-        if (!isEnabled) {
-          _updateStatus('User declined to enable Bluetooth');
-          return;
-        }
+        if (!isEnabled || !mounted) return;
       }
 
-      // Step 4: Get paired devices
-      _updateStatus('Getting paired devices...');
       final devices = await _bluetoothScanner.getPairedDevices() ?? [];
-
       if (!mounted) return;
-
       setState(() {
-        _devices = devices;
-        _status = 'Found ${devices.length} paired device(s)';
-        _isLoading = false;
+        _pairedDevices = devices;
+        _isLoadingPaired = false;
       });
-    } on PlatformException catch (e) {
-      _updateStatus('Error: ${e.message}');
-    } catch (e) {
-      _updateStatus('Unexpected error: $e');
+    } on PlatformException {
+      if (mounted) setState(() => _isLoadingPaired = false);
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingPaired = false);
     }
   }
 
-  void _updateStatus(String status) {
-    if (!mounted) return;
+  Future<void> _startDiscovery() async {
     setState(() {
-      _status = status;
-      _isLoading = false;
+      _discoveredDevices.clear();
+      _lastScanEvent = ScanStarted();
     });
+
+    _bluetoothScanner.startDiscovery().listen((event) {
+      if (!mounted) return;
+      setState(() {
+        _lastScanEvent = event;
+        if (event is DeviceFound && !_discoveredDevices.contains(event.device)) {
+          _discoveredDevices.add(event.device);
+        }
+      });
+    });
+  }
+
+  Future<void> _stopDiscovery() async {
+    await _bluetoothScanner.stopDiscovery();
+    if (mounted) setState(() => _lastScanEvent = ScanFinished());
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Bluetooth Scanner'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _initBluetooth,
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Bluetooth Scanner')),
         body: Column(
           children: [
-            // Status bar
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.grey[200],
-              width: double.infinity,
-              child: Row(
-                children: [
-                  if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  Expanded(child: Text(_status)),
-                ],
+            Expanded(
+              child: _PairedDevicesSection(
+                devices: _pairedDevices,
+                isLoading: _isLoadingPaired,
+                onRefresh: _loadPairedDevices,
               ),
             ),
-            // Device list
+            const Divider(height: 1),
             Expanded(
-              child: _devices.isEmpty
-                  ? const Center(child: Text('No paired devices found'))
-                  : ListView.builder(
-                      itemCount: _devices.length,
-                      itemBuilder: (_, index) {
-                        final device = _devices[index];
-                        return ListTile(
-                          leading: const Icon(Icons.bluetooth),
-                          title: Text(device.name ?? 'Unknown Device'),
-                          subtitle: Text(device.address ?? 'No MAC address'),
-                        );
-                      },
-                    ),
+              child: _ScanSection(
+                lastEvent: _lastScanEvent,
+                devices: _discoveredDevices,
+                onStart: _startDiscovery,
+                onStop: _stopDiscovery,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PairedDevicesSection extends StatelessWidget {
+  const _PairedDevicesSection({
+    required this.devices,
+    required this.isLoading,
+    required this.onRefresh,
+  });
+
+  final List<BluetoothDevice> devices;
+  final bool isLoading;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SectionHeader(
+          title: 'Paired Devices',
+          trailing: IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: isLoading ? null : onRefresh,
+          ),
+        ),
+        Expanded(child: _body()),
+      ],
+    );
+  }
+
+  Widget _body() {
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (devices.isEmpty) return const Center(child: Text('No paired devices found'));
+    return ListView.builder(
+      itemCount: devices.length,
+      itemBuilder: (_, index) => _DeviceTile(device: devices[index], icon: Icons.bluetooth),
+    );
+  }
+}
+
+class _ScanSection extends StatelessWidget {
+  const _ScanSection({
+    required this.lastEvent,
+    required this.devices,
+    required this.onStart,
+    required this.onStop,
+  });
+
+  final ScanEvent lastEvent;
+  final List<BluetoothDevice> devices;
+  final VoidCallback onStart;
+  final VoidCallback onStop;
+
+  bool get _isScanning => lastEvent is ScanStarted || lastEvent is DeviceFound;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SectionHeader(
+          title: 'Scan Results',
+          trailing: TextButton(
+            onPressed: _isScanning ? onStop : onStart,
+            child: Text(_isScanning ? 'Stop' : 'Start Scan'),
+          ),
+        ),
+        Expanded(child: _body()),
+      ],
+    );
+  }
+
+  Widget _body() {
+    return switch (lastEvent) {
+      ScanNotStarted() => const SizedBox.shrink(),
+      ScanStarted() || DeviceFound() => const Center(child: CircularProgressIndicator()),
+      ScanFinished() => devices.isEmpty
+          ? const Center(child: Text('No devices found'))
+          : _deviceList(),
+      ScanError(:final message) => Center(child: Text(message)),
+    };
+  }
+
+  Widget _deviceList() {
+    return ListView.builder(
+      itemCount: devices.length,
+      itemBuilder: (_, index) => _DeviceTile(
+        device: devices[index],
+        icon: Icons.bluetooth_searching,
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.trailing});
+
+  final String title;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          trailing,
+        ],
+      ),
+    );
+  }
+}
+
+class _DeviceTile extends StatelessWidget {
+  const _DeviceTile({required this.device, required this.icon});
+
+  final BluetoothDevice device;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(device.name ?? 'Unknown Device'),
+      subtitle: Text(device.address ?? 'No MAC address'),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:bluetooth_scanner/src/models/bluetooth_device.dart';
+import 'package:bluetooth_scanner/src/scan_event.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'bluetooth_scanner_method_channel.dart';
@@ -17,8 +18,6 @@ abstract class BluetoothScannerPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String?> getPlatformVersion();
-
   Future<bool> hasBluetoothPermissions();
   Future<bool> requestBluetoothPermissions();
 
@@ -27,4 +26,8 @@ abstract class BluetoothScannerPlatform extends PlatformInterface {
   Future<bool> enableBluetooth();
 
   Future<List<BluetoothDevice>?> getPairedDevices();
+
+  Stream<ScanEvent> startDiscovery();
+  Future<bool> stopDiscovery();
+  Future<bool> isDiscovering();
 }
