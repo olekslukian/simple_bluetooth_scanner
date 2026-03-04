@@ -67,28 +67,15 @@ class BluetoothScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        activityBinding = binding
-
-        binding.addRequestPermissionsResultListener(this)
-        binding.addActivityResultListener { requestCode, resultCode, _ ->
-            handleActivityResult(requestCode, resultCode)
-        }
+        attachToActivity(binding)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        activityBinding?.removeRequestPermissionsResultListener(this)
-        activityBinding = null
-        activity = null
+        detachFromActivity()
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        activityBinding = binding
-        binding.addRequestPermissionsResultListener(this)
-        binding.addActivityResultListener { requestCode, resultCode, _ ->
-            handleActivityResult(requestCode, resultCode)
-        }
+        attachToActivity(binding)
     }
 
    override fun onDetachedFromActivity() {
@@ -97,6 +84,19 @@ class BluetoothScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         pendingResult?.error("ACTIVITY_DETACHED", "Activity was destroyed", null)
         pendingResult = null
 
+        detachFromActivity()
+    }
+
+    private fun attachToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        activityBinding = binding
+        binding.addRequestPermissionsResultListener(this)
+        binding.addActivityResultListener { requestCode, resultCode, _ ->
+            handleActivityResult(requestCode, resultCode)
+        }
+    }
+
+    private fun detachFromActivity() {
         activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding = null
         activity = null
@@ -104,7 +104,6 @@ class BluetoothScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
-            "get_platform_version" -> result.success("Android ${Build.VERSION.RELEASE}")
             "is_bluetooth_supported" -> isBluetoothSupported(result)
             "has_bluetooth_permissions" -> hasBluetoothPermissions(result)
             "request_bluetooth_permissions" -> requestBluetoothPermissions(result)
